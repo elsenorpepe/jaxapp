@@ -42,8 +42,8 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def avatar(self, size):
-        digest = md5(self.email.lower().endcode('utf-8').hexdigest())
-        return 'https://www.gravatar.com/avatar/{}?d=identicon&s{}'.format(digest, size)
+        digest = md5(self.email.lower().encode('utf-8')).hexdigest()
+        return 'https://www.gravatar.com/avatar/{}?d=identicon&s={}'.format(digest, size)
 
     def follow(self, user):
         if not self.is_following(user):
@@ -61,11 +61,12 @@ class User(UserMixin, db.Model):
 
     # query that joins Post table with followers where the person being followed equals the author
     # then filtered down to those entries where the follower is the user (self) and sorted
-    def followed_post(self):
-        return Post.query.join(
-            followers, (followers.c.followed_id = Post.user_id)).filter(
-            followers.c.follower_id == self.id).order_by(
-            Post.timestamp.desc())
+    def followed_posts(self):
+        followed = Post.query.join(
+            followers, (followers.c.followed_id == Post.user_id)).filter(
+                followers.c.follower_id == self.id)
+        own = Post.query.filter_by(user_id=self.id)
+        return followed.union(own).order_by(Post.timestamp.desc())
 
 
 class Post(db.Model):
